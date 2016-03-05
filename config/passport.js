@@ -9,7 +9,7 @@ module.exports = function (passport) {
     });
 
     passport.deserializeUser(function(id, done) {
-        UserExternal.findById(id).populate('entities._portal', 'portalURL agencyName').exec(function(err, user) {
+        User.findById(id).populate('entities._portal', 'portalURL agencyName').exec(function(err, user) {
             done(err, user);
         });
     });
@@ -69,7 +69,8 @@ module.exports = function (passport) {
                     user.google         = profile.id;
                     user.tokens.push({provider: 'google', token: accessToken});
 
-                    user.name = profile.displayName;
+                    user.firstName  = profile.name.givenName;
+                    user.lastName   = profile.name.lastName;
 
                     if(profile._json){
                         user.gender     = profile._json.gender;
@@ -87,7 +88,7 @@ module.exports = function (passport) {
             // No user found, creating new user entry
             User.findOne({ google: profile.id }, function(err, googleUser) {
                 if (googleUser) {
-                    return done(null, user);
+                    return done(null, googleUser);
                 }
 
                 User.findOne({ email: profile.emails[0].value }, function(err, userFound) {
@@ -97,17 +98,19 @@ module.exports = function (passport) {
                     }
 
                     var newUser         = new User();
-                        newUser.email   = profile.emails[0].value;
-                        newUser.google  = profile.id;
-                        newUser.tokens.push({ provider: 'google', token: accessToken });
+                    newUser.email   = profile.emails[0].value;
+                    newUser.google  = profile.id;
+                    newUser.tokens.push({ provider: 'google', token: accessToken });
 
-                        newUser.name        = profile.displayName;
-                        newUser.gender      = profile._json.gender;
-                        newUser.picture     = profile._json.image.url;
+                    newUser.firstName  = profile.name.givenName;
+                    newUser.lastName   = profile.name.familyName;
 
-                        newUser.save(function(err) {
-                            done(err, user);
-                        });
+                    newUser.gender      = profile._json.gender;
+                    newUser.picture     = profile._json.image.url;
+
+                    newUser.save(function(err, saved) {
+                        done(err, saved);
+                    });
                 });
             });
         }
